@@ -133,6 +133,84 @@
       text-shadow: 0 0 5px black;
       font-size: 1.1rem;
     }
+
+    .scroll-animation {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .mouse {
+      width: 26px;
+      height: 44px;
+      border: 3px solid #44aaef;
+      border-radius: 15px;
+      position: relative;
+      box-shadow: 0 0 10px rgba(68, 170, 239, 0.4);
+    }
+
+    .wheel {
+      width: 6px;
+      height: 12px;
+      background: #44aaef;
+      border-radius: 3px;
+      position: absolute;
+      top: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      animation: scrollWheel 1s infinite linear;
+      box-shadow: 0 0 5px rgba(68, 170, 239, 0.8);
+    }
+
+    @keyframes scrollWheel {
+      0% { top: 6px; opacity: 1; }
+      100% { top: 20px; opacity: 0; }
+    }
+
+    .arrows {
+      display: flex;
+      flex-direction: column;
+      line-height: 0.6;
+      margin-top: 5px;
+    }
+
+    .arrow {
+      color: #44aaef;
+      font-size: 1.8rem;
+      font-weight: bold;
+      animation: arrowFade 1.5s infinite;
+      opacity: 0;
+      text-shadow: 0 0 10px rgba(68, 170, 239, 0.8);
+    }
+
+    .arrow:nth-child(1) { animation-delay: 0s; }
+    .arrow:nth-child(2) { animation-delay: 0.2s; }
+    .arrow:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes arrowFade {
+      0% { opacity: 0; transform: translateY(-5px); }
+      50% { opacity: 1; }
+      100% { opacity: 0; transform: translateY(10px); }
+    }
+
+    #countdown .mouse {
+      border-color: #ff4444;
+      box-shadow: 0 0 10px rgba(255, 68, 68, 0.4);
+    }
+    #countdown .wheel {
+      background: #ff4444;
+      box-shadow: 0 0 5px rgba(255, 68, 68, 0.8);
+    }
+    #countdown .arrow {
+      color: #ff4444;
+      text-shadow: 0 0 10px rgba(255, 68, 68, 0.8);
+    }
+    #countdown .scroll-animation {
+      margin-top: 0;
+      transform: scale(0.8);
+    }
   </style>
 </head>
 
@@ -142,11 +220,31 @@
       <h1>POWER OUTAGE DETECTED</h1>
       <p>The video generator has lost power.</p>
       <p><strong>Keep scrolling repeatedly to power the video playback!</strong></p>
+      <div class="scroll-animation">
+        <div class="mouse">
+          <div class="wheel"></div>
+        </div>
+        <div class="arrows">
+          <span class="arrow">↓</span>
+          <span class="arrow">↓</span>
+          <span class="arrow">↓</span>
+        </div>
+      </div>
     </div>
 
     <div id="countdown" class="overlay-panel">
       <h1>SYSTEM FAILURE IMMINENT</h1>
       <p>Power depleted! Scrolling required to restart!</p>
+      <div class="scroll-animation">
+        <div class="mouse">
+          <div class="wheel"></div>
+        </div>
+        <div class="arrows">
+          <span class="arrow">↓</span>
+          <span class="arrow">↓</span>
+          <span class="arrow">↓</span>
+        </div>
+      </div>
       <div id="countdown-number">3</div>
     </div>
 
