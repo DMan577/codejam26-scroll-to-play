@@ -249,6 +249,7 @@
 
       // Capture various scroll methods
       window.addEventListener('wheel', (e) => {
+        e.preventDefault();
         handleScroll(Math.abs(e.deltaY) || Math.abs(e.deltaX) || 10);
       }, { passive: false });
 
@@ -257,6 +258,7 @@
         if (e.touches.length > 0) lastTouchY = e.touches[0].clientY;
       });
       window.addEventListener('touchmove', (e) => {
+        e.preventDefault();
         if (e.touches.length > 0 && lastTouchY !== null) {
           let delta = Math.abs(e.touches[0].clientY - lastTouchY);
           lastTouchY = e.touches[0].clientY;
