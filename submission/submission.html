@@ -1,8 +1,9 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
-  <title>Joel</title>
+  <title>Scroll to Play</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <style type="text/css">
@@ -11,74 +12,331 @@
       background: transparent;
       margin: 0;
       padding: 0;
-      font-family: sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      user-select: none;
     }
 
     #overlay-container {
-      width: 960px;
-      height: 540px;
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: auto;
     }
 
-    /* Your style here... (feel free to remove this example styling) */
-    #skip {
-      display: none; /* Hidden until ad starts */
+    .overlay-panel {
+      display: none;
       position: absolute;
-      bottom: 60px;
-      right: 0;
-      padding: 10px 18px;
-      background: rgba(0, 0, 0, 0.6);
-      border: 1px solid black;
-      border-right-width: 0;
-      font-size: 1.2rem;
-      border-radius: 4px 0 0 4px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(20, 0, 0, 0.85);
+      border: 2px solid #ff4444;
+      border-radius: 12px;
+      padding: 30px 50px;
+      text-align: center;
       color: white;
-      cursor: pointer;
+      box-shadow: 0 0 40px rgba(255, 0, 0, 0.4);
+      flex-direction: column;
+      align-items: center;
+      backdrop-filter: blur(4px);
+    }
+
+    .overlay-panel h1 {
+      margin: 0 0 15px 0;
+      color: #ff4444;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    .overlay-panel p {
+      font-size: 1.2rem;
+      margin: 5px 0;
+    }
+
+    #instructions {
+      border-color: #44aaef;
+      box-shadow: 0 0 40px rgba(68, 170, 239, 0.4);
+      background: rgba(0, 15, 30, 0.85);
+    }
+
+    #instructions h1 {
+      color: #44aaef;
+    }
+
+    #countdown-number {
+      font-size: 6rem;
+      font-weight: bold;
+      color: #ff4444;
+      margin-top: 10px;
+      text-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+    }
+
+    #power-meter-wrapper {
+      display: none;
+      position: absolute;
+      right: 40px;
+      top: 50%;
+      transform: translateY(-50%);
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+    }
+
+    #power-meter-container {
+      width: 40px;
+      height: 300px;
+      background: rgba(0, 0, 0, 0.6);
+      border: 3px solid #fff;
+      border-radius: 20px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.8);
+      overflow: hidden;
+      position: relative;
+    }
+
+    #power-fill {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #00ff00;
+      box-shadow: 0 0 15px #00ff00;
+      transition: height 0.1s linear, background-color 0.2s, box-shadow 0.2s;
+    }
+
+    .power-marks {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+    }
+
+    .mark {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.8);
+    }
+
+    .power-label {
+      color: white;
+      font-weight: bold;
+      letter-spacing: 2px;
+      text-shadow: 0 0 5px black;
+      font-size: 1.1rem;
     }
   </style>
 </head>
 
 <body>
   <div id="overlay-container">
-    <!-- We've added a sample button. Feel free to remove it: -->
-    <button id="skip">
-      Skip Ad...
-    </button>
+    <div id="instructions" class="overlay-panel">
+      <h1>POWER OUTAGE DETECTED</h1>
+      <p>The video generator has lost power.</p>
+      <p><strong>Keep scrolling repeatedly to power the video playback!</strong></p>
+    </div>
+
+    <div id="countdown" class="overlay-panel">
+      <h1>SYSTEM FAILURE IMMINENT</h1>
+      <p>Power depleted! Scrolling required to restart!</p>
+      <div id="countdown-number">3</div>
+    </div>
+
+    <div id="power-meter-wrapper">
+      <div id="power-meter-container">
+        <div id="power-fill"></div>
+        <div class="power-marks">
+          <div class="mark" style="bottom: 90%;"></div>
+          <div class="mark" style="bottom: 40%;"></div>
+        </div>
+      </div>
+      <div class="power-label">POWER</div>
+    </div>
   </div>
 
   <script type="text/javascript">
-    (function(window, document){
-      // This is how you tell the parent window that the ad was successfully skipped.
-      function adSuccess() {
-        window.top.postMessage({ type: 'success' }, '*');
+    (function (window, document) {
+      // === DIFFICULTY CONFIGURATION ===
+      const CONFIG = {
+        scrollSensitivity: 0.03, // How much power is gained per scroll unit
+        touchMultiplier: 10.0,   // Multiplier specifically for touch screen swipes
+        baseDecayRate: 15,       // Initial power decay per second
+        gracePeriod: 2,          // Seconds before decay starts accelerating
+        accelerationRate: 8.0,   // How much the decay rate increases per second
+        maxDecayRate: 120,       // The maximum decay rate it can reach
+        countdownSeconds: 3.0    // Seconds given to recover when power hits 0
+      };
+      // ================================
+
+      const UI = {
+        instructions: document.getElementById('instructions'),
+        powerMeterWrapper: document.getElementById('power-meter-wrapper'),
+        powerFill: document.getElementById('power-fill'),
+        countdown: document.getElementById('countdown'),
+        countdownNumber: document.getElementById('countdown-number'),
+      };
+
+      let state = 'IDLE'; // IDLE, INSTRUCTIONS, PLAYING, COUNTDOWN, FAIL, SUCCESS
+      let power = 100;
+      let timeActive = 0;
+      let countdownTimer = CONFIG.countdownSeconds;
+      let lastTime = performance.now();
+      let lastPlaybackRate = 1.0;
+
+      function setState(newState) {
+        state = newState;
+        UI.instructions.style.display = 'none';
+        UI.powerMeterWrapper.style.display = 'none';
+        UI.countdown.style.display = 'none';
+
+        if (state === 'INSTRUCTIONS') {
+          UI.instructions.style.display = 'flex';
+          window.top.postMessage({ type: 'pause' }, '*');
+        } else if (state === 'PLAYING') {
+          UI.powerMeterWrapper.style.display = 'flex';
+          window.top.postMessage({ type: 'play' }, '*');
+          lastPlaybackRate = -1; // force update of playback speed
+        } else if (state === 'COUNTDOWN') {
+          UI.powerMeterWrapper.style.display = 'flex';
+          UI.countdown.style.display = 'flex';
+          window.top.postMessage({ type: 'pause' }, '*');
+        } else if (state === 'FAIL') {
+          window.top.postMessage({ type: 'fail' }, '*');
+        } else if (state === 'SUCCESS') {
+          window.top.postMessage({ type: 'success' }, '*');
+        }
       }
 
-      const skipButton = document.getElementById('skip');
-
-      // Listen for messages from the game shell
       window.addEventListener('message', (event) => {
         if (!event.data || !event.data.type) return;
 
         if (event.data.type === 'adStarted') {
-          // Show the skip button when the ad starts
-          skipButton.style.display = 'block';
+          setState('INSTRUCTIONS');
+          lastTime = performance.now();
+          requestAnimationFrame(gameLoop);
         }
 
-        // By default, if the user doesn't "skip" the ad before the video ends,
-        // we call fail to restart. You're welcome to replace this with a survey
-        // or other interaction instead (see examples/survey).
         if (event.data.type === 'adFinished') {
-          skipButton.style.display = 'none';
-          window.top.postMessage({ type: 'fail' }, '*');
+          if (state !== 'FAIL' && state !== 'SUCCESS') {
+            setState('SUCCESS');
+          }
         }
       });
 
-      // Your ad overlay code goes here, we've added a simple example below:
-      skipButton.addEventListener('click', () => {
-        skipButton.style.display = 'none';
-        adSuccess();
-      });
+      function handleScroll(amount) {
+        if (state === 'INSTRUCTIONS') {
+          setState('PLAYING');
+        }
 
+        if (state === 'PLAYING' || state === 'COUNTDOWN') {
+          power += amount * CONFIG.scrollSensitivity;
+          if (power > 100) power = 100;
+
+          if (state === 'COUNTDOWN' && power > 0) {
+            setState('PLAYING');
+            countdownTimer = CONFIG.countdownSeconds;
+          }
+        }
+      }
+
+      // Capture various scroll methods
+      window.addEventListener('wheel', (e) => {
+        handleScroll(Math.abs(e.deltaY) || Math.abs(e.deltaX) || 10);
+      }, { passive: false });
+
+      let lastTouchY = null;
+      window.addEventListener('touchstart', (e) => {
+        if (e.touches.length > 0) lastTouchY = e.touches[0].clientY;
+      });
+      window.addEventListener('touchmove', (e) => {
+        if (e.touches.length > 0 && lastTouchY !== null) {
+          let delta = Math.abs(e.touches[0].clientY - lastTouchY);
+          lastTouchY = e.touches[0].clientY;
+          handleScroll(delta * CONFIG.touchMultiplier); // Boosted significantly for touch devices
+        }
+      }, { passive: false });
+
+
+      function gameLoop(currentTime) {
+        if (state === 'SUCCESS' || state === 'FAIL') return;
+
+        let dt = (currentTime - lastTime) / 1000;
+        if (dt > 0.1) dt = 0.1; // Cap dt to prevent massive jumps if tab is inactive
+        lastTime = currentTime;
+
+        if (state === 'PLAYING') {
+          timeActive += dt;
+
+          let baseRate = CONFIG.baseDecayRate;
+          let gracePeriod = CONFIG.gracePeriod;
+          let acceleration = CONFIG.accelerationRate;
+
+          let currentRate = baseRate;
+          if (timeActive > gracePeriod) {
+            currentRate += (timeActive - gracePeriod) * acceleration;
+          }
+          if (currentRate > CONFIG.maxDecayRate) {
+            currentRate = CONFIG.maxDecayRate;
+          }
+
+          power -= currentRate * dt;
+          if (power <= 0) {
+            power = 0;
+            setState('COUNTDOWN');
+          }
+
+          updatePowerUI();
+          updatePlaybackSpeed();
+        } else if (state === 'COUNTDOWN') {
+          countdownTimer -= dt;
+          UI.countdownNumber.innerText = Math.ceil(countdownTimer);
+
+          if (countdownTimer <= 0) {
+            setState('FAIL');
+          }
+          updatePowerUI();
+        }
+
+        requestAnimationFrame(gameLoop);
+      }
+
+      function updatePowerUI() {
+        UI.powerFill.style.height = power + '%';
+        if (power > 90) {
+          UI.powerFill.style.backgroundColor = '#00ff00';
+          UI.powerFill.style.boxShadow = '0 0 15px #00ff00';
+        } else if (power > 40) {
+          UI.powerFill.style.backgroundColor = '#ffff00';
+          UI.powerFill.style.boxShadow = '0 0 15px #ffff00';
+        } else {
+          UI.powerFill.style.backgroundColor = '#ff0000';
+          UI.powerFill.style.boxShadow = '0 0 15px #ff0000';
+        }
+      }
+
+      function updatePlaybackSpeed() {
+        let targetRate = 1.0;
+        if (power < 90) {
+          targetRate = Math.max(0.1, power / 90);
+        }
+
+        targetRate = Math.round(targetRate * 100) / 100;
+
+        if (Math.abs(targetRate - lastPlaybackRate) >= 0.05 || (targetRate === 1.0 && lastPlaybackRate !== 1.0)) {
+          lastPlaybackRate = targetRate;
+          window.top.postMessage({ type: 'setPlaybackRate', value: targetRate }, '*');
+        }
+      }
     })(window, document);
   </script>
 </body>
+
 </html>
